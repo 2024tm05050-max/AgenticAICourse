@@ -1,0 +1,22 @@
+# Optional: only apply this if you have an Ingress controller (e.g. nginx)
+# installed and want external HTTP access to the RAG API.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-api-ingress
+  namespace: rag-system
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rag.example.com # <-- change to your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rag-api-service
+                port:
+                  number: 80

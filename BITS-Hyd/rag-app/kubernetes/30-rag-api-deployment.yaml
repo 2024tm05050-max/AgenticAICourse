@@ -1,0 +1,59 @@
+# Build & push the image first:
+#   cd rag-api
+#   docker build -t myrepo/rag-api:v1 .
+#   docker push myrepo/rag-api:v1
+# then update the image field below.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-api
+  namespace: rag-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-api
+  template:
+    metadata:
+      labels:
+        app: rag-api
+    spec:
+      containers:
+        - name: rag-api
+          image: myrepo/rag-api:v1
+          ports:
+            - containerPort: 8000
+          env:
+            - name: QDRANT_HOST
+              value: qdrant-service
+            - name: QDRANT_PORT
+              value: "6333"
+            - name: QDRANT_COLLECTION
+              value: documents
+            - name: VLLM_BASE_URL
+              value: http://vllm-service:8000/v1
+            - name: VLLM_MODEL_NAME
+              value: Qwen/Qwen3-8B-Instruct
+            - name: EMBEDDING_MODEL_NAME
+              value: sentence-transformers/all-MiniLM-L6-v2
+            - name: TOP_K
+              value: "4"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20

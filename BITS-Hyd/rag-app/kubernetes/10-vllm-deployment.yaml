@@ -1,0 +1,84 @@
+# Prerequisites on the cluster:
+#   - NVIDIA device plugin / GPU Operator installed so nodes expose
+#     the "nvidia.com/gpu" resource.
+#   - The node with the RTX 4090 labeled, e.g.:
+#       kubectl label node <node-name> gpu=rtx4090
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: rag-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      nodeSelector:
+        gpu: rtx4090
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          args:
+            - "--model"
+            - "Qwen/Qwen3-8B-Instruct"
+            - "--served-model-name"
+            - "Qwen/Qwen3-8B-Instruct"
+            - "--dtype"
+            - "bfloat16"
+            - "--max-model-len"
+            - "16384"
+            - "--gpu-memory-utilization"
+            - "0.90"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8000"
+          ports:
+            - containerPort: 8000
+          env:
+            - name: HF_HOME
+              value: /root/.cache/huggingface
+            # Uncomment if the model is gated and you created the hf-secret:
+            # - name: HF_TOKEN
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: hf-secret
+            #       key: HF_TOKEN
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+              memory: "16Gi"
+              cpu: "4"
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /root/.cache/huggingface
+            - name: dshm
+              mountPath: /dev/shm
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 20
+      volumes:
+        - name: hf-cache
+          persistentVolumeClaim:
+            claimName: hf-cache-pvc
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi

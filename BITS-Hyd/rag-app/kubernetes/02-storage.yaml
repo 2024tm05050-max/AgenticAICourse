@@ -1,0 +1,28 @@
+# Cache for downloaded HF model weights, so vLLM doesn't re-download
+# Qwen3-8B-Instruct (~16 GB) on every pod restart.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hf-cache-pvc
+  namespace: rag-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  # storageClassName: <set this to a class available on your cluster>
+---
+# Qdrant's persistent storage for vectors + payloads.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qdrant-storage-pvc
+  namespace: rag-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  # storageClassName: <set this to a class available on your cluster>
